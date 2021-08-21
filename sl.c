@@ -195,7 +195,7 @@ static int LOGO      = 0;
 static int FLY       = 0;
 static int C51       = 0;
 
-#define SMOKE_SIZE       1000
+#define SMOKE_SIZE       50
 static struct smokes {
     int y, x;
     int ptrn, kind;
@@ -402,7 +402,11 @@ static int add_C51(int x)
 
     int y, i, dy = 0;
 
-    if (x < - C51LENGTH)  return RT_ERROR;
+    if (x < - C51LENGTH)
+    {
+        return RT_ERROR;
+    }
+
     y = VT_DEFAULT_ROW_SIZE / 2 - 5;
 
     if (FLY == 1) {
@@ -435,7 +439,7 @@ static void sl(int argc, char *argv[])
     vt_store_screen();
 
     /* clear global variable */
-    rt_memset(S, 0, sizeof(struct smokes)*SMOKE_SIZE);
+    rt_memset(S, 0, sizeof(struct smokes) * SMOKE_SIZE);
     sum = 0;
     ACCIDENT  = 0;
     LOGO      = 0;
