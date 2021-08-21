@@ -195,6 +195,14 @@ static int LOGO      = 0;
 static int FLY       = 0;
 static int C51       = 0;
 
+#define SMOKE_SIZE       1000
+static struct smokes {
+    int y, x;
+    int ptrn, kind;
+} S[SMOKE_SIZE];
+
+static int sum = 0;
+
 static void sl_draw(int row, int col, char *str)
 {
     rt_uint16_t i;
@@ -244,13 +252,8 @@ static void option(char *str)
 }
 
 static void add_smoke(int y, int x)
-#define SMOKEPTNS        16
 {
-    static struct smokes {
-        int y, x;
-        int ptrn, kind;
-    } S[1000];
-    static int sum = 0;
+#define SMOKEPTNS        16
     static const char *Smoke[2][SMOKEPTNS]
         = {{"(   )", "(    )", "(    )", "(   )", "(  )",
             "(  )" , "( )"   , "( )"   , "()"   , "()"  ,
@@ -284,6 +287,7 @@ static void add_smoke(int y, int x)
         S[sum].ptrn = 0; S[sum].kind = sum % 2;
         sum ++;
     }
+#undef SMOKEPTNS
 }
 
 static void add_man(int y, int x)
@@ -429,6 +433,14 @@ static void sl(int argc, char *argv[])
 
     vt_hide_cursor();
     vt_store_screen();
+
+    /* clear global variable */
+    rt_memset(S, 0, sizeof(struct smokes)*SMOKE_SIZE);
+    sum = 0;
+    ACCIDENT  = 0;
+    LOGO      = 0;
+    FLY       = 0;
+    C51       = 0;
 
     for (x = VT_DEFAULT_COL_SIZE - 1; ; --x) {
         if (LOGO == 1) {
