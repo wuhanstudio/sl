@@ -190,26 +190,44 @@
 #define C51WH13 "/~\\____|___|/~\\_|  O=======O=======O   |__|+-/~\\_|     "
 #define C51WH14 "\\_/         \\_/  \\____/  \\____/  \\____/      \\_/       "
 
-static void add_smoke(int y, int x);
-static void add_man(int y, int x);
-static int add_C51(int x);
-static int add_D51(int x);
-static int add_sl(int x);
-static void option(char *str);
-static int my_mvaddstr(int y, int x, char *str);
-
 static int ACCIDENT  = 0;
 static int LOGO      = 0;
 static int FLY       = 0;
 static int C51       = 0;
 
-static int my_mvaddstr(int y, int x, char *str)
+static void sl_draw(int row, int col, char *str)
 {
-    for ( ; x < 0; ++x, ++str)
-        if (*str == '\0')  return RT_ERROR;
-    for ( ; *str != '\0'; ++str, ++x)
-        vt_draw_char_at(y, x, *str);
-    return RT_EOK;
+    rt_uint16_t i;
+
+    if(col >= 0)
+    {
+        vt_move_to(row, col);
+        for(i=0; i < VT_DEFAULT_COL_SIZE - col; i++)
+        {
+            if(str[i] == '\0')
+            {
+                return;
+            }
+            vt_draw_char(str[i]);
+        }
+    }
+    else
+    {
+        rt_uint16_t j;
+
+        vt_move_to(row, 0);
+        for(i=0; i < VT_DEFAULT_COL_SIZE; i++)
+        {
+            for(j=0; j<-col + i; j++)
+            {
+                if(str[j] == '\0')
+                {
+                    return;
+                }
+            }
+            vt_draw_char(str[-col + i]);
+        }
+    }
 }
 
 static void option(char *str)
@@ -222,6 +240,59 @@ static void option(char *str)
             case 'c': C51      = 1; break;
             default:                break;
         }
+    }
+}
+
+static void add_smoke(int y, int x)
+#define SMOKEPTNS        16
+{
+    static struct smokes {
+        int y, x;
+        int ptrn, kind;
+    } S[1000];
+    static int sum = 0;
+    static const char *Smoke[2][SMOKEPTNS]
+        = {{"(   )", "(    )", "(    )", "(   )", "(  )",
+            "(  )" , "( )"   , "( )"   , "()"   , "()"  ,
+            "O"    , "O"     , "O"     , "O"    , "O"   ,
+            " "                                          },
+           {"(@@@)", "(@@@@)", "(@@@@)", "(@@@)", "(@@)",
+            "(@@)" , "(@)"   , "(@)"   , "@@"   , "@@"  ,
+            "@"    , "@"     , "@"     , "@"    , "@"   ,
+            " "                                          }};
+    static const char *Eraser[SMOKEPTNS]
+        =  {"     ", "      ", "      ", "     ", "    ",
+            "    " , "   "   , "   "   , "  "   , "  "  ,
+            " "    , " "     , " "     , " "    , " "   ,
+            " "                                          };
+    static const int dy[SMOKEPTNS] = { 2,  1, 1, 1, 0, 0, 0, 0, 0, 0,
+                                 0,  0, 0, 0, 0, 0             };
+    static const int dx[SMOKEPTNS] = {-2, -1, 0, 1, 1, 1, 1, 1, 2, 2,
+                                 2,  2, 2, 3, 3, 3             };
+    int i;
+
+    if (x % 4 == 0) {
+        for (i = 0; i < sum; ++i) {
+            sl_draw(S[i].y, S[i].x, (char*)Eraser[S[i].ptrn]);
+            S[i].y    -= dy[S[i].ptrn];
+            S[i].x    += dx[S[i].ptrn];
+            S[i].ptrn += (S[i].ptrn < SMOKEPTNS - 1) ? 1 : 0;
+            sl_draw(S[i].y, S[i].x, (char*)Smoke[S[i].kind][S[i].ptrn]);
+        }
+        sl_draw(y, x, (char*)Smoke[sum % 2][0]);
+        S[sum].y = y;    S[sum].x = x;
+        S[sum].ptrn = 0; S[sum].kind = sum % 2;
+        sum ++;
+    }
+}
+
+static void add_man(int y, int x)
+{
+    static const char *man[2][2] = {{"", "(O)"}, {"Help!", "\\O/"}};
+    int i;
+
+    for (i = 0; i < 2; ++i) {
+        sl_draw(y + i, x, (char*)man[(LOGOLENGTH + x) / 12 % 2][i]);
     }
 }
 
@@ -251,10 +322,10 @@ static int add_sl(int x)
         py1 = 2;  py2 = 4;  py3 = 6;
     }
     for (i = 0; i <= LOGOHEIGHT; ++i) {
-        my_mvaddstr(y + i, x, (char*)sl[(LOGOLENGTH + x) / 3 % LOGOPATTERNS][i]);
-        my_mvaddstr(y + i + py1, x + 21, (char*)coal[i]);
-        my_mvaddstr(y + i + py2, x + 42, (char*)car[i]);
-        my_mvaddstr(y + i + py3, x + 63, (char*)car[i]);
+        sl_draw(y + i, x, (char*)sl[(LOGOLENGTH + x) / 3 % LOGOPATTERNS][i]);
+        sl_draw(y + i + py1, x + 21, (char*)coal[i]);
+        sl_draw(y + i + py2, x + 42, (char*)car[i]);
+        sl_draw(y + i + py3, x + 63, (char*)car[i]);
     }
     if (ACCIDENT == 1) {
         add_man(y + 1, x + 14);
@@ -295,8 +366,8 @@ static int add_D51(int x)
         dy = 1;
     }
     for (i = 0; i <= D51HEIGHT; ++i) {
-        my_mvaddstr(y + i, x, (char*)d51[(D51LENGTH + x) % D51PATTERNS][i]);
-        my_mvaddstr(y + i + dy, x + 53, (char*)coal[i]);
+        sl_draw(y + i, x, (char*)d51[(D51LENGTH + x) % D51PATTERNS][i]);
+        sl_draw(y + i + dy, x + 53, (char*)coal[i]);
     }
     if (ACCIDENT == 1) {
         add_man(y + 2, x + 43);
@@ -335,8 +406,8 @@ static int add_C51(int x)
         dy = 1;
     }
     for (i = 0; i <= C51HEIGHT; ++i) {
-        my_mvaddstr(y + i, x, (char*)c51[(C51LENGTH + x) % C51PATTERNS][i]);
-        my_mvaddstr(y + i + dy, x + 55, (char*)coal[i]);
+        sl_draw(y + i, x, (char*)c51[(C51LENGTH + x) % C51PATTERNS][i]);
+        sl_draw(y + i + dy, x + 55, (char*)coal[i]);
     }
     if (ACCIDENT == 1) {
         add_man(y + 3, x + 45);
@@ -344,61 +415,6 @@ static int add_C51(int x)
     }
     add_smoke(y - 1, x + C51FUNNEL);
     return RT_EOK;
-}
-
-
-static void add_man(int y, int x)
-{
-    static const char *man[2][2] = {{"", "(O)"}, {"Help!", "\\O/"}};
-    int i;
-
-    for (i = 0; i < 2; ++i) {
-        my_mvaddstr(y + i, x, (char*)man[(LOGOLENGTH + x) / 12 % 2][i]);
-    }
-}
-
-
-static void add_smoke(int y, int x)
-#define SMOKEPTNS        16
-{
-    static struct smokes {
-        int y, x;
-        int ptrn, kind;
-    } S[1000];
-    static int sum = 0;
-    static const char *Smoke[2][SMOKEPTNS]
-        = {{"(   )", "(    )", "(    )", "(   )", "(  )",
-            "(  )" , "( )"   , "( )"   , "()"   , "()"  ,
-            "O"    , "O"     , "O"     , "O"    , "O"   ,
-            " "                                          },
-           {"(@@@)", "(@@@@)", "(@@@@)", "(@@@)", "(@@)",
-            "(@@)" , "(@)"   , "(@)"   , "@@"   , "@@"  ,
-            "@"    , "@"     , "@"     , "@"    , "@"   ,
-            " "                                          }};
-    static const char *Eraser[SMOKEPTNS]
-        =  {"     ", "      ", "      ", "     ", "    ",
-            "    " , "   "   , "   "   , "  "   , "  "  ,
-            " "    , " "     , " "     , " "    , " "   ,
-            " "                                          };
-    static const int dy[SMOKEPTNS] = { 2,  1, 1, 1, 0, 0, 0, 0, 0, 0,
-                                 0,  0, 0, 0, 0, 0             };
-    static const int dx[SMOKEPTNS] = {-2, -1, 0, 1, 1, 1, 1, 1, 2, 2,
-                                 2,  2, 2, 3, 3, 3             };
-    int i;
-
-    if (x % 4 == 0) {
-        for (i = 0; i < sum; ++i) {
-            my_mvaddstr(S[i].y, S[i].x, (char*)Eraser[S[i].ptrn]);
-            S[i].y    -= dy[S[i].ptrn];
-            S[i].x    += dx[S[i].ptrn];
-            S[i].ptrn += (S[i].ptrn < SMOKEPTNS - 1) ? 1 : 0;
-            my_mvaddstr(S[i].y, S[i].x, (char*)Smoke[S[i].kind][S[i].ptrn]);
-        }
-        my_mvaddstr(y, x, (char*)Smoke[sum % 2][0]);
-        S[sum].y = y;    S[sum].x = x;
-        S[sum].ptrn = 0; S[sum].kind = sum % 2;
-        sum ++;
-    }
 }
 
 static void sl(int argc, char *argv[])
