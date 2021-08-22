@@ -458,11 +458,6 @@ static void sl(int argc, char *argv[])
         }
     }
 
-    vt_set_font_color(VT_F_WHITE);
-    vt_set_bg_color(VT_B_BLACK);
-    vt_move_to(23, 0);
-    rt_kprintf("\n");
-
     vt_clear_attr();
     vt_show_cursor();
     vt_restore_screen();
